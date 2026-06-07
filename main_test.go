@@ -28,81 +28,11 @@ func TestFormatTime(t *testing.T) {
 	}
 }
 
-func TestSplitSentences(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		want  []string
-	}{
-		{
-			name:  "japanese periods",
-			input: "こんにちは。世界。",
-			want:  []string{"こんにちは。", "世界。"},
-		},
-		{
-			name:  "mixed delimiters",
-			input: "走れ！なぜ？終わり。",
-			want:  []string{"走れ！", "なぜ？", "終わり。"},
-		},
-		{
-			name:  "no delimiter at end",
-			input: "始まり。途中",
-			want:  []string{"始まり。", "途中"},
-		},
-		{
-			name:  "empty string",
-			input: "",
-			want:  nil,
-		},
-		{
-			name:  "whitespace only",
-			input: "   \n  ",
-			want:  nil,
-		},
-		{
-			name:  "english periods",
-			input: "Hello. World.",
-			want:  []string{"Hello.", "World."},
-		},
-		{
-			name:  "single sentence no delimiter",
-			input: "テスト",
-			want:  []string{"テスト"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := splitSentences(tt.input)
-			if len(got) != len(tt.want) {
-				t.Fatalf("splitSentences(%q) returned %d sentences, want %d\ngot: %v", tt.input, len(got), len(tt.want), got)
-			}
-			for i := range got {
-				if got[i] != tt.want[i] {
-					t.Errorf("sentence[%d] = %q, want %q", i, got[i], tt.want[i])
-				}
-			}
-		})
-	}
-}
 
 func TestGenerateSRT(t *testing.T) {
-	sentences := []string{"あいう。", "かきくけこ。"}
-	// 4 chars + 6 chars = 10 chars total, duration = 10s
-	// first: 10 * 4/10 = 4s, second: 10 * 6/10 = 6s
-	result := generateSRT(sentences, 10.0)
+	result := generateSRT("こんにちは。", 10.0)
 
-	expected := "1\n00:00:00,000 --> 00:00:04,000\nあいう。\n\n2\n00:00:04,000 --> 00:00:10,000\nかきくけこ。\n\n"
-	if result != expected {
-		t.Errorf("generateSRT mismatch\ngot:\n%s\nwant:\n%s", result, expected)
-	}
-}
-
-func TestGenerateSRT_SingleSentence(t *testing.T) {
-	sentences := []string{"テスト。"}
-	result := generateSRT(sentences, 5.0)
-
-	expected := "1\n00:00:00,000 --> 00:00:05,000\nテスト。\n\n"
+	expected := "1\n00:00:00,000 --> 00:00:10,000\nこんにちは。\n\n"
 	if result != expected {
 		t.Errorf("generateSRT mismatch\ngot:\n%s\nwant:\n%s", result, expected)
 	}

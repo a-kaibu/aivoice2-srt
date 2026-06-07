@@ -7,9 +7,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
-	"unicode/utf8"
 )
 
 func main() {
@@ -62,12 +60,12 @@ func main() {
 			continue
 		}
 
-		sentences := splitSentences(string(text))
-		if len(sentences) == 0 {
+		content := strings.TrimSpace(string(text))
+		if content == "" {
 			continue
 		}
 
-		srt := generateSRT(sentences, duration)
+		srt := generateSRT(content, duration)
 		outPath := filepath.Join(dir, base+".srt")
 		if err := os.WriteFile(outPath, []byte(srt), 0644); err != nil {
 			fmt.Fprintf(os.Stderr, "error writing %s: %v\n", outPath, err)
@@ -131,58 +129,8 @@ func wavDuration(path string) (float64, error) {
 	}
 }
 
-func splitSentences(text string) []string {
-	text = strings.TrimSpace(text)
-	if text == "" {
-		return nil
-	}
-
-	delimiters := []rune{'。', '！', '？', '!', '?', '.'}
-	var sentences []string
-	var current strings.Builder
-
-	for _, r := range text {
-		current.WriteRune(r)
-		if slices.Contains(delimiters, r) {
-			s := strings.TrimSpace(current.String())
-			if s != "" {
-				sentences = append(sentences, s)
-			}
-			current.Reset()
-		}
-	}
-
-	if s := strings.TrimSpace(current.String()); s != "" {
-		sentences = append(sentences, s)
-	}
-
-	return sentences
-}
-
-func generateSRT(sentences []string, totalDuration float64) string {
-	totalChars := 0
-	for _, s := range sentences {
-		totalChars += utf8.RuneCountInString(s)
-	}
-
-	var sb strings.Builder
-	currentTime := 0.0
-
-	for i, s := range sentences {
-		charCount := utf8.RuneCountInString(s)
-		segDuration := totalDuration * float64(charCount) / float64(totalChars)
-
-		startTime := currentTime
-		endTime := currentTime + segDuration
-		currentTime = endTime
-
-		fmt.Fprintf(&sb, "%d\n", i+1)
-		fmt.Fprintf(&sb, "%s --> %s\n", formatTime(startTime), formatTime(endTime))
-		sb.WriteString(s)
-		sb.WriteString("\n\n")
-	}
-
-	return sb.String()
+func generateSRT(text string, duration float64) string {
+	return fmt.Sprintf("1\n%s --> %s\n%s\n\n", formatTime(0), formatTime(duration), text)
 }
 
 func formatTime(seconds float64) string {
