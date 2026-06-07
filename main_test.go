@@ -28,16 +28,6 @@ func TestFormatTime(t *testing.T) {
 	}
 }
 
-
-func TestGenerateSRT(t *testing.T) {
-	result := generateSRT("こんにちは。", 10.0)
-
-	expected := "1\n00:00:00,000 --> 00:00:10,000\nこんにちは。\n\n"
-	if result != expected {
-		t.Errorf("generateSRT mismatch\ngot:\n%s\nwant:\n%s", result, expected)
-	}
-}
-
 func TestWavDuration(t *testing.T) {
 	dir := t.TempDir()
 	wavPath := filepath.Join(dir, "test.wav")
@@ -79,25 +69,21 @@ func createTestWav(t *testing.T, path string, sampleRate uint32, channels uint16
 	fmtSize := uint32(16)
 	fileSize := 4 + (8 + fmtSize) + (8 + dataSize)
 
-	// RIFF header
 	f.Write([]byte("RIFF"))
 	binary.Write(f, binary.LittleEndian, fileSize)
 	f.Write([]byte("WAVE"))
 
-	// fmt chunk
 	f.Write([]byte("fmt "))
 	binary.Write(f, binary.LittleEndian, fmtSize)
-	binary.Write(f, binary.LittleEndian, uint16(1)) // PCM
+	binary.Write(f, binary.LittleEndian, uint16(1))
 	binary.Write(f, binary.LittleEndian, channels)
 	binary.Write(f, binary.LittleEndian, sampleRate)
 	binary.Write(f, binary.LittleEndian, byteRate)
 	binary.Write(f, binary.LittleEndian, blockAlign)
 	binary.Write(f, binary.LittleEndian, bitsPerSample)
 
-	// data chunk
 	f.Write([]byte("data"))
 	binary.Write(f, binary.LittleEndian, dataSize)
-	// Write zeros for audio data
 	zeros := make([]byte, dataSize)
 	f.Write(zeros)
 }

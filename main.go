@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -41,22 +42,33 @@ func main() {
 		}
 	}
 
-	for base, wavPath := range wavFiles {
-		txtPath, ok := txtFiles[base]
-		if !ok {
+	var bases []string
+	for base := range wavFiles {
+		if _, ok := txtFiles[base]; ok {
+			bases = append(bases, base)
+		} else {
 			fmt.Fprintf(os.Stderr, "skip: no matching txt for %s.wav\n", base)
+		}
+	}
+	sort.Strings(bases)
+
+	if len(bases) == 0 {
+		log.Fatal("no matching wav/txt pairs found")
+	}
+
+	var sb strings.Builder
+	currentTime := 0.0
+
+	for i, base := range bases {
+		duration, err := wavDuration(wavFiles[base])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "skip: %s: %v\n", wavFiles[base], err)
 			continue
 		}
 
-		duration, err := wavDuration(wavPath)
+		text, err := os.ReadFile(txtFiles[base])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "skip: %s: %v\n", wavPath, err)
-			continue
-		}
-
-		text, err := os.ReadFile(txtPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "skip: %s: %v\n", txtPath, err)
+			fmt.Fprintf(os.Stderr, "skip: %s: %v\n", txtFiles[base], err)
 			continue
 		}
 
@@ -65,14 +77,17 @@ func main() {
 			continue
 		}
 
-		srt := generateSRT(content, duration)
-		outPath := filepath.Join(dir, base+".srt")
-		if err := os.WriteFile(outPath, []byte(srt), 0644); err != nil {
-			fmt.Fprintf(os.Stderr, "error writing %s: %v\n", outPath, err)
-			continue
-		}
-		fmt.Printf("created: %s\n", outPath)
+		endTime := currentTime + duration
+		fmt.Fprintf(&sb, "%d\n%s --> %s\n%s\n\n", i+1, formatTime(currentTime), formatTime(endTime), content)
+		currentTime = endTime
 	}
+
+	dirName := filepath.Base(dir)
+	outPath := filepath.Join(dir, dirName+".srt")
+	if err := os.WriteFile(outPath, []byte(sb.String()), 0644); err != nil {
+		log.Fatalf("error writing %s: %v", outPath, err)
+	}
+	fmt.Printf("created: %s\n", outPath)
 }
 
 func wavDuration(path string) (float64, error) {
@@ -104,7 +119,6 @@ func wavDuration(path string) (float64, error) {
 		return 0, fmt.Errorf("not a valid WAV file")
 	}
 
-	// Skip to "data" chunk
 	offset := int64(12 + 8 + int64(header.FmtSize))
 	if _, err := f.Seek(offset, 0); err != nil {
 		return 0, err
@@ -127,10 +141,6 @@ func wavDuration(path string) (float64, error) {
 			return 0, err
 		}
 	}
-}
-
-func generateSRT(text string, duration float64) string {
-	return fmt.Sprintf("1\n%s --> %s\n%s\n\n", formatTime(0), formatTime(duration), text)
 }
 
 func formatTime(seconds float64) string {
