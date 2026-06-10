@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -50,7 +51,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "skip: no matching txt for %s.wav\n", base)
 		}
 	}
-	sort.Strings(bases)
+	sort.Slice(bases, func(i, j int) bool {
+		return extractNum(bases[i]) < extractNum(bases[j])
+	})
 
 	if len(bases) == 0 {
 		log.Fatal("no matching wav/txt pairs found")
@@ -82,7 +85,11 @@ func main() {
 		currentTime = endTime
 	}
 
-	dirName := filepath.Base(dir)
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		log.Fatalf("failed to resolve path: %v", err)
+	}
+	dirName := filepath.Base(absDir)
 	outPath := filepath.Join(dir, dirName+".srt")
 	if err := os.WriteFile(outPath, []byte(sb.String()), 0644); err != nil {
 		log.Fatalf("error writing %s: %v", outPath, err)
@@ -141,6 +148,18 @@ func wavDuration(path string) (float64, error) {
 			return 0, err
 		}
 	}
+}
+
+func extractNum(base string) int {
+	idx := strings.Index(base, "_")
+	if idx <= 0 {
+		return math.MaxInt
+	}
+	n, err := strconv.Atoi(base[:idx])
+	if err != nil {
+		return math.MaxInt
+	}
+	return n
 }
 
 func formatTime(seconds float64) string {
